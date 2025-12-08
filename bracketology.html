@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bracketology - Custom Tournament Maker</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- html2canvas -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .font-sport {
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 0.05em;
+        }
+
+        /* Bracket Tree Styles */
+        .bracket-tree {
+            display: flex;
+            align-items: center;
+        }
+        
+        .bracket-node {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            height: 100%; 
+        }
+
+        .bracket-children {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .bracket-connector-h {
+            width: 20px;
+            height: 2px;
+            background-color: #cbd5e1;
+        }
+
+        .child-wrapper {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Pill styling for nodes */
+        .bracket-pill {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 2.5rem; 
+            padding: 0 0.5rem;
+            width: 100%;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Firebase Configuration & Initialization ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Inline Icons ---
+        const Icons = {
+            Trophy: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>),
+            Swords: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg>),
+            Plus: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>),
+            Play: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polygon points="5 3 19 12 5 21 5 3"/></svg>),
+            ChevronRight: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polyline points="9 18 15 12 9 6"/></svg>),
+            Sparkles: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>),
+            Copy: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>),
+            Crown: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>),
+            Share2: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>),
+            Zap: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>),
+            AlertCircle: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>),
+            Flame: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>)
+        };
+
+        const { Trophy, Swords, Plus, Play, ChevronRight, Sparkles, Copy, Crown, Share2, Zap, AlertCircle, Flame } = Icons;
+
+        // --- Constants ---
+        const BRACKETS_COLLECTION = 'brackets';
+        const RESULTS_COLLECTION = 'results';
+        const SHARE_BASE_URL = "https://dferrara19.github.io/bracketology/bracket.html";
+        const POPULAR_JSON_URL = "popular.json"; 
+        
+        // --- DEMO DATA ---
+        const DEMO_BRACKETS = {
+            "DEMO_DISNEY": {
+                id: "DEMO_DISNEY",
+                title: "Best Disney Song",
+                entrants: [
+                    { id: 0, name: "Circle of Life", scout: "The iconic opener.", seed: 1 },
+                    { id: 1, name: "Let It Go", scout: "The modern classic.", seed: 2 },
+                    { id: 2, name: "A Whole New World", scout: "A romantic masterpiece.", seed: 3 },
+                    { id: 3, name: "Part of Your World", scout: "The mermaid's plea.", seed: 4 },
+                    { id: 4, name: "Bare Necessities", scout: "Simple and catchy.", seed: 5 },
+                    { id: 5, name: "You've Got a Friend", scout: "Toy Story's heart.", seed: 6 },
+                    { id: 6, name: "Hakuna Matata", scout: "No worries!", seed: 7 },
+                    { id: 7, name: "Be Our Guest", scout: "Service with style.", seed: 8 }
+                ]
+            },
+            "DEMO_SANDWICH": {
+                id: "DEMO_SANDWICH",
+                title: "The Ultimate Sandwich",
+                entrants: [
+                    { id: 0, name: "Grilled Cheese", scout: "Comfort food king.", seed: 1 },
+                    { id: 1, name: "BLT", scout: "Crispy perfection.", seed: 2 },
+                    { id: 2, name: "Reuben", scout: "Sauerkraut surprise.", seed: 3 },
+                    { id: 3, name: "Philly Cheesesteak", scout: "City of Brotherly Love.", seed: 4 },
+                    { id: 4, name: "Club Sandwich", scout: "Triple decker.", seed: 5 },
+                    { id: 5, name: "Banh Mi", scout: "Vietnamese classic.", seed: 6 },
+                    { id: 6, name: "Cubano", scout: "Ham and cheese elevated.", seed: 7 },
+                    { id: 7, name: "PB & J", scout: "Childhood favorite.", seed: 8 }
+                ]
+            },
+            "DEMO_90S": {
+                id: "DEMO_90S",
+                title: "Best 90s Cartoon",
+                entrants: [
+                    { id: 0, name: "Batman: TAS", scout: "Dark deco masterpiece.", seed: 1 },
+                    { id: 1, name: "The Simpsons", scout: "Golden era comedy.", seed: 2 },
+                    { id: 2, name: "X-Men", scout: "That theme song!", seed: 3 },
+                    { id: 3, name: "SpongeBob", scout: "Nautical nonsense.", seed: 4 },
+                    { id: 4, name: "Rugrats", scout: "A baby's perspective.", seed: 5 },
+                    { id: 5, name: "Dexter's Lab", scout: "Genius at work.", seed: 6 },
+                    { id: 6, name: "Pokemon", scout: "Gotta catch 'em all.", seed: 7 },
+                    { id: 7, name: "Powerpuff Girls", scout: "Sugar, spice, everything nice.", seed: 8 }
+                ]
+            }
+        };
+
+        // --- Analyst & Seeding Logic ---
+        const ANALYST_QUOTES = [
+            "This one is going down to the wire!",
+            "Las Vegas is split on this matchup.",
+            "A classic David vs. Goliath story.",
+            "Offense wins games, defense wins championships.",
+            "The momentum is shifting...",
+            "Expect a high-scoring affair.",
+            "The intangibles favor the left side.",
+            "Winner takes all. Loser goes home.",
+            "It's not about the size of the dog in the fight...",
+            "Can they handle the pressure of the big stage?",
+            "Look for a fast start to set the tone.",
+            "History suggests the higher seed has the edge.",
+            "Don't blink, this one could be over fast.",
+            "The scouts are saying this is a mismatch.",
+            "Pure talent vs. pure grit.",
+            "A tactical nightmare for the coaches.",
+            "This rivalry goes back years.",
+            "The crowd factor can't be ignored here.",
+            "One mistake could decide everything.",
+            "This is what March is all about!",
+            "Legacy defining moment right here.",
+            "Both sides refusing to back down.",
+            "An absolute chess match unfolding.",
+            "Expect the unexpected in this one.",
+            "The stats say one thing, the heart says another.",
+            "Defense wins championships, but offense sells tickets.",
+            "They are leaving it all on the floor tonight.",
+            "A true test of character for both sides.",
+            "You can cut the tension with a knife.",
+            "This is what we call a barn burner!",
+            "Neither side wants to go home early.",
+            "The coach must be losing their mind right now.",
+            "Efficiency is the name of the game.",
+            "It's a game of runs.",
+            "Momentum is a fickle mistress.",
+            "They need a spark, and fast.",
+            "This is a statement game.",
+            "Survive and advance.",
+            "The madness is just beginning.",
+            "Who has the clutch gene?",
+            "Stats don't measure heart.",
+            "An instant classic in the making.",
+            "The bracket buster potential is high.",
+            "This matchup is a nightmare for the selection committee.",
+            "A battle of wills."
+        ];
+
+        const getAnalystQuote = (p1, p2, isFinal) => {
+            const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            if (isFinal) {
+                return getRandom([
+                    "It all comes down to this. History is watching.",
+                    "The confetti canon is primed. Who wants it more?",
+                    "There is no tomorrow. Leave it all on the field.",
+                    "Two titans. One trophy. Let's dance.",
+                    "The final chapter of an incredible story.",
+                    "Immortality awaits the winner.",
+                    "One shining moment!",
+                    "The whole season comes down to this."
+                ]);
+            }
+
+            const seedDiff = Math.abs(p1.seed - p2.seed);
+            const sumSeeds = p1.seed + p2.seed;
+
+            if (sumSeeds <= 5) {
+                return getRandom([
+                    "A clash of the titans! This feels like the finals.",
+                    "Two absolute powerhouses colliding early.",
+                    "The committee got this seeding right. Massive matchup.",
+                    "Strength vs Strength. Something has to give.",
+                    "Star power everywhere you look.",
+                    "Two juggernauts colliding.",
+                    "This feels like a heavyweight title fight.",
+                    "Star power overload."
+                ]);
+            }
+
+            if (seedDiff >= 4) {
+                return getRandom([
+                    `Can the #${Math.max(p1.seed, p2.seed)} seed shock the world?`,
+                    "Classic David vs. Goliath scenario here.",
+                    "Everyone loves a Cinderella story. Is this the start of one?",
+                    `The #${Math.min(p1.seed, p2.seed)} seed is heavily favored, but they can't sleep on this.`,
+                    "Upset alert? The experts are whispering.",
+                    "On paper this is a blowout, but they play the games for a reason.",
+                    "Can the underdog pull off the miracle?",
+                    "Nobody gave them a chance, but here we are.",
+                    "David is loading his sling."
+                ]);
+            }
+
+            if (seedDiff <= 1) {
+                return getRandom([
+                    "This one is a total coin flip.",
+                    "Too close to call. This goes down to the wire.",
+                    "Las Vegas won't touch this line. Dead even.",
+                    "It's going to come down to the final possession.",
+                    "Razor thin margins in this matchup.",
+                    "Pick 'em.",
+                    "This will come down to the last possession."
+                ]);
+            }
+
+            return getRandom(ANALYST_QUOTES);
+        };
+
+        const getChampionAnalysis = (champion, bracketSize) => {
+            const seed = champion.seed;
+            const isTopSeed = seed === 1;
+            const isHighSeed = seed <= 4;
+            const isLowSeed = seed > bracketSize / 2;
+            
+            const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            if (isTopSeed) {
+                return getRandom([
+                    { title: "The Undisputed King", text: `As predicted by the experts, the #1 seed ${champion.name} completes a dominant run. This wasn't just a win; it was a coronation. A dynasty in the making.` },
+                    { title: "Business as Usual", text: `They came, they saw, they conquered. The #1 seed ${champion.name} took everyone's best shot and still ended up on top. Perfection.` },
+                    { title: "Heavy lies the Crown", text: `The pressure was immense, but ${champion.name} didn't crack. A wire-to-wire performance that reminds us why they were the favorite.` }
+                ]);
+            }
+            if (isHighSeed) {
+                return getRandom([
+                    { title: "Cream of the Crop", text: `Elite talent prevails. ${champion.name} entered as a favorite and played like one, dismantling the opposition with systematic precision.` },
+                    { title: "Championship Pedigree", text: `Class showed today. ${champion.name} navigated a tough field with the poise of a true champion. They deserve this moment.` }
+                ]);
+            }
+            if (isLowSeed) {
+                return getRandom([
+                    { title: "The Ultimate Cinderella Story", text: `Do you believe in miracles?! The #${seed} seed ${champion.name} has shocked the world! Brackets everywhere are busted. This is why we play the games!` },
+                    { title: "Bracket Busted", text: `Nobody saw this coming. The #${seed} seed just went on a legendary run that will be talked about for decades. ${champion.name} is your champion!` },
+                    { title: "Against All Odds", text: `From the bubble to the trophy. ${champion.name} defied every statistic and expert prediction to claim the title.` }
+                ]);
+            }
+            return getRandom([
+                { title: "Bracket Buster", text: `Nobody saw this coming except maybe ${champion.name} themselves. A gritty, hard-fought path through the toughest bracket in years.` },
+                { title: "The Hard Road", text: `Nothing came easy for ${champion.name}, but they battled through every round to earn this victory. A blue-collar championship.` }
+            ]);
+        };
+
+        const getBracketOrder = (numEntrants) => {
+            let rounds = Math.log2(numEntrants);
+            let order = [1];
+            for (let i = 0; i < rounds; i++) {
+                const nextOrder = [];
+                const nextCount = order.length * 2;
+                for (let j = 0; j < order.length; j++) { nextOrder.push(order[j]); nextOrder.push(nextCount + 1 - order[j]); }
+                order = nextOrder;
+            }
+            return order.map(seed => seed - 1);
+        };
+
+        const getVisualEntrants = (entrants) => {
+            if (!entrants || entrants.length === 0) return [];
+            const indices = getBracketOrder(entrants.length);
+            return indices.map(i => entrants[i]);
+        };
+
+        // --- Visual Components ---
+
+        const BracketNode = ({ node, isRoot }) => {
+            const isLeaf = !node.children || node.children.length === 0;
+            const p = node.player;
+            return (
+                <div className="bracket-tree">
+                    {!isLeaf && (
+                        <div className="bracket-children">
+                            {node.children.map((child, idx) => (
+                                <div key={idx} className="child-wrapper"><BracketNode node={child} isRoot={false} /></div>
+                            ))}
+                        </div>
+                    )}
+                    {!isLeaf && <div className="bracket-connector-h"></div>}
+                    <div className="bracket-node">
+                        <div className={`w-32 md:w-40 bg-white border ${isRoot ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300'} rounded shadow-sm text-xs relative z-10 bracket-pill`}>
+                            <span className="font-bold text-gray-400 mr-2 w-4">{p ? p.seed : '?'}</span>
+                            <span className={`truncate font-bold ${isRoot ? 'text-blue-900' : 'text-gray-800'}`}>{p ? p.name : 'TBD'}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const buildBracketTree = (entrants, history) => {
+            let currentNodes = entrants.map(e => ({ player: e, children: [] }));
+            const roundsCount = Math.log2(entrants.length);
+            for (let r = 0; r < roundsCount; r++) {
+                const nextLevelNodes = [];
+                for (let i = 0; i < currentNodes.length; i += 2) {
+                    const child1 = currentNodes[i];
+                    const child2 = currentNodes[i+1];
+                    const winnerMatch = history.find(m => (m.winner.id === child1.player.id && m.loser.id === child2.player.id) || (m.winner.id === child2.player.id && m.loser.id === child1.player.id));
+                    const winnerPlayer = winnerMatch ? winnerMatch.winner : { name: 'TBD', seed: '', id: 'tbd' };
+                    nextLevelNodes.push({ player: winnerPlayer, children: [child1, child2] });
+                }
+                currentNodes = nextLevelNodes;
+            }
+            return currentNodes[0];
+        };
+
+        const FullTreeViewer = ({ entrants, matchHistory }) => {
+            const rootNode = React.useMemo(() => {
+                if(!entrants || entrants.length === 0) return null;
+                const visualEntrants = getVisualEntrants(entrants);
+                return buildBracketTree(visualEntrants, matchHistory);
+            }, [entrants, matchHistory]);
+            if (!rootNode) return null;
+            return (
+                <div className="overflow-x-auto pb-12 pt-4 px-4 flex justify-center items-center"><BracketNode node={rootNode} isRoot={true} /></div>
+            );
+        };
+
+        // --- Screens ---
+
+        const RoundSummary = ({ roundName, upsets, onNext, entrants, matchHistory }) => {
+            return (
+                <div className="max-w-6xl mx-auto p-6 animate-fade-in flex flex-col items-center justify-center min-h-[50vh]">
+                    <div className="bg-white rounded-xl shadow-xl p-8 border-t-8 border-blue-600 w-full text-center">
+                        <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} className="text-blue-600" /></div>
+                        <h2 className="text-3xl font-sport text-gray-900 mb-2 uppercase tracking-wide">Halftime Report</h2>
+                        <p className="text-gray-500 font-bold mb-6 uppercase tracking-widest text-xs">End of {roundName}</p>
+                        <div className="grid lg:grid-cols-2 gap-8 mb-8 text-left">
+                            <div>
+                                {upsets.length > 0 ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 h-full">
+                                        <h3 className="font-bold text-yellow-800 text-sm mb-2 flex items-center gap-2"><Zap size={16}/> Major Upsets</h3>
+                                        <ul className="space-y-2">{upsets.map((u, i) => (<li key={i} className="text-sm text-gray-700"><span className="font-bold text-red-600">#{u.winner.seed} {u.winner.name}</span> stunned <span className="text-gray-500">#{u.loser.seed} {u.loser.name}</span></li>))}</ul>
+                                    </div>
+                                ) : (
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 h-full flex items-center justify-center text-sm text-gray-500 italic">"Chalk prevails! No major upsets this round."</div>
+                                )}
+                            </div>
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4"><h3 className="font-bold text-blue-800 text-sm mb-2">Bracket Update</h3><div className="overflow-hidden h-48 relative border border-blue-200 rounded bg-white"><div className="transform scale-75 origin-top-left absolute top-2 left-2"><FullTreeViewer entrants={entrants} matchHistory={matchHistory} /></div></div></div>
+                        </div>
+                        <button onClick={onNext} className="w-full md:w-1/2 mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transform active:scale-95 transition-all">Start Next Round <ChevronRight size={16} className="inline"/></button>
+                    </div>
+                </div>
+            );
+        };
+
+        const CreateScreen = ({ onSave, onCancel }) => {
+            const [title, setTitle] = React.useState('');
+            const [bracketSize, setBracketSize] = React.useState(8);
+            const [entrants, setEntrants] = React.useState(Array(8).fill().map((_, i) => ({ id: i, name: '', scout: '', seed: i + 1 })));
+            const [isSaving, setIsSaving] = React.useState(false);
+
+            const handleSizeChange = (size) => {
+                setBracketSize(size);
+                setEntrants(prev => {
+                    const newArr = Array(size).fill().map((_, i) => ({ id: i, name: '', scout: '', seed: i + 1 }));
+                    for (let i = 0; i < Math.min(prev.length, size); i++) { newArr[i].name = prev[i].name; newArr[i].scout = prev[i].scout; }
+                    return newArr;
+                });
+            };
+            const handleEntrantChange = (index, field, value) => {
+                const newEntrants = [...entrants];
+                newEntrants[index][field] = value;
+                setEntrants(newEntrants);
+            };
+            const handleDebugFill = () => {
+                const timeStr = new Date().toLocaleTimeString();
+                setTitle(`Debug Cup ${timeStr}`);
+                const newEntrants = entrants.map((entrant, i) => ({ ...entrant, name: `Team ${String.fromCharCode(65 + (i % 26))}${i + 1}`, scout: `This is a debug generated stat for seed #${i+1}.` }));
+                setEntrants(newEntrants);
+            };
+            const handleSave = async () => {
+                if (!title.trim()) { alert("Please name tournament!"); return; }
+                const incomplete = entrants.some(e => !e.name.trim());
+                if (incomplete) { alert("Please fill names."); return; }
+                setIsSaving(true);
+                try { await onSave({ title, entrants, timestamp: Date.now() }); } catch (error) { console.error("Error saving:", error); alert("Failed to save."); } finally { setIsSaving(false); }
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto p-4 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-xl overflow-hidden flex flex-col h-[90vh] md:h-auto">
+                        <div className="bg-blue-600 p-6 text-white shrink-0"><h2 className="text-3xl font-sport uppercase">Commissioner's Office</h2><p className="opacity-90 mt-2">Configure your Tournament</p></div>
+                        <div className="p-6 overflow-y-auto grow">
+                            <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                <div>
+                                    <div className="flex justify-between items-center mb-2"><label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Tournament Title</label><button onClick={handleDebugFill} className="text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-500 px-2 py-1 rounded transition-colors" title="Auto-fill for testing"><Zap size={10} /> Debug Fill</button></div>
+                                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Best Disney Villain" className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none text-lg font-bold"/>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bracket Size</label>
+                                    <div className="flex gap-2">{[4, 8, 16, 32, 64].map(size => (<button key={size} onClick={() => handleSizeChange(size)} className={`flex-1 py-3 rounded-lg font-bold border-2 transition-colors ${bracketSize === size ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}>{size}</button>))}</div>
+                                </div>
+                            </div>
+                            <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide flex items-center gap-2 sticky top-0 bg-white py-2 z-10 border-b border-gray-100"><Swords size={16} /> The Contenders ({bracketSize})</h3>
+                            <div className="grid md:grid-cols-2 gap-4 pb-4">
+                                {entrants.map((entrant, idx) => (
+                                    <div key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 flex overflow-hidden group hover:border-blue-400 transition-colors">
+                                        <div className="bg-blue-100 w-16 flex flex-col items-center justify-center shrink-0 border-r border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors"><span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Seed</span><span className="text-2xl font-sport">{idx + 1}</span></div>
+                                        <div className="p-3 grow space-y-2"><input type="text" placeholder={`Enter Name for Seed #${idx + 1}`} value={entrant.name} onChange={(e) => handleEntrantChange(idx, 'name', e.target.value)} className="w-full p-1 bg-transparent border-b border-gray-200 focus:border-blue-500 focus:outline-none font-bold text-gray-800"/><input type="text" placeholder="Fun fact / key stats" value={entrant.scout} onChange={(e) => handleEntrantChange(idx, 'scout', e.target.value)} className="w-full p-1 bg-transparent border-b border-dotted border-gray-200 focus:border-blue-500 focus:outline-none text-xs text-gray-500 italic"/></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0"><button onClick={onCancel} className="px-6 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button><button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition-all flex items-center gap-2">{isSaving ? 'Minting...' : <>Start The Madness <ChevronRight size={20}/></>}</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GameScreen = ({ bracket, onReset, onGameFinished }) => {
+            const [currentRoundMatchups, setCurrentRoundMatchups] = React.useState([]);
+            const [nextRoundContenders, setNextRoundContenders] = React.useState([]);
+            const [currentMatchIndex, setCurrentMatchIndex] = React.useState(0);
+            const [roundName, setRoundName] = React.useState("");
+            const [champion, setChampion] = React.useState(null);
+            const [analystQuote, setAnalystQuote] = React.useState("");
+            const [matchHistory, setMatchHistory] = React.useState([]);
+            const [showingSummary, setShowingSummary] = React.useState(false);
+            const [roundUpsets, setRoundUpsets] = React.useState([]);
+            const [finishedRoundName, setFinishedRoundName] = React.useState("");
+
+            const getRoundName = (numContenders) => {
+                if (numContenders === 2) return "The Championship";
+                if (numContenders === 4) return "Final Four";
+                if (numContenders === 8) return "Elite Eight";
+                if (numContenders === 16) return "Sweet Sixteen";
+                if (numContenders === 32) return "Round of 32";
+                if (numContenders === 64) return "Round of 64";
+                return `Round of ${numContenders}`;
+            };
+
+            const refreshQuote = (match, isFinal) => {
+                if (!match) return;
+                const quote = getAnalystQuote(match.p1, match.p2, isFinal);
+                setAnalystQuote(quote);
+            };
+
+            React.useEffect(() => {
+                if (bracket && currentRoundMatchups.length === 0 && !champion) {
+                    const visualEntrants = getVisualEntrants(bracket.entrants);
+                    const matchups = [];
+                    for (let i = 0; i < visualEntrants.length; i += 2) {
+                        matchups.push({ p1: visualEntrants[i], p2: visualEntrants[i+1] });
+                    }
+                    setCurrentRoundMatchups(matchups);
+                    setRoundName(getRoundName(bracket.entrants.length));
+                    if (matchups.length > 0) refreshQuote(matchups[0], false);
+                }
+            }, [bracket]);
+
+            const handleVote = (winner, loser) => {
+                const newHistory = [...matchHistory, { round: roundName, winner: winner, loser: loser, matchup: { p1: winner, p2: loser } }];
+                setMatchHistory(newHistory);
+                const newNextRound = [...nextRoundContenders, winner];
+                setNextRoundContenders(newNextRound);
+                if (winner.seed > loser.seed + 3) setRoundUpsets(prev => [...prev, { winner, loser }]);
+
+                if (currentMatchIndex >= currentRoundMatchups.length - 1) {
+                    if (newNextRound.length === 1) {
+                        const finalChampion = newNextRound[0];
+                        setChampion(finalChampion);
+                        triggerConfetti();
+                        const resultData = { champion: finalChampion, matchHistory: newHistory, entrants: bracket.entrants, bracketTitle: bracket.title, bracketId: bracket.id };
+                        onGameFinished(resultData);
+                    } else {
+                        setFinishedRoundName(roundName);
+                        setShowingSummary(true);
+                    }
+                } else {
+                    const nextMatchIndex = currentMatchIndex + 1;
+                    setCurrentMatchIndex(nextMatchIndex);
+                    refreshQuote(currentRoundMatchups[nextMatchIndex], false);
+                }
+            };
+
+            const proceedToNextRound = () => {
+                const nextMatchups = [];
+                for (let i = 0; i < nextRoundContenders.length; i += 2) { nextMatchups.push({ p1: nextRoundContenders[i], p2: nextRoundContenders[i+1] }); }
+                setRoundName(getRoundName(nextRoundContenders.length));
+                setCurrentRoundMatchups(nextMatchups);
+                setCurrentMatchIndex(0);
+                setNextRoundContenders([]);
+                setShowingSummary(false);
+                setRoundUpsets([]); 
+                refreshQuote(nextMatchups[0], false);
+            };
+
+            const triggerConfetti = () => {
+                const duration = 3000;
+                const end = Date.now() + duration;
+                (function frame() {
+                    confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#3b82f6', '#f97316', '#ffffff'] });
+                    confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#3b82f6', '#f97316', '#ffffff'] });
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                }());
+            };
+
+            if (champion) return <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-fade-in"><div className="text-2xl font-bold text-gray-500 animate-pulse">Crowning Champion...</div></div>;
+            if (showingSummary) return <RoundSummary roundName={finishedRoundName} upsets={roundUpsets} onNext={proceedToNextRound} entrants={bracket.entrants} matchHistory={matchHistory} />;
+            if (currentRoundMatchups.length === 0) return <div className="p-12 text-center text-gray-500">Preparing the arena...</div>;
+
+            const currentMatch = currentRoundMatchups[currentMatchIndex];
+
+            return (
+                <div className="max-w-4xl mx-auto p-4 animate-fade-in flex flex-col h-full">
+                    <div className="text-center mb-8"><div className="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">{roundName} • Match {currentMatchIndex + 1} of {currentRoundMatchups.length}</div><h2 className="text-3xl font-sport text-gray-900">{bracket.title}</h2></div>
+                    <div className="flex flex-col md:flex-row gap-4 items-stretch justify-center relative mb-8">
+                        <div onClick={() => handleVote(currentMatch.p1, currentMatch.p2)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-left"><div className="absolute top-0 left-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">SEED #{currentMatch.p1.seed}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p1.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p1.scout || "An absolute powerhouse."}"</p></div></div>
+                        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex items-center justify-center w-16 h-16 bg-orange-500 text-white font-sport text-2xl rounded-full border-4 border-white shadow-lg">VS</div>
+                        <div className="md:hidden flex items-center justify-center py-2 text-orange-500 font-black text-xl">VS</div>
+                        <div onClick={() => handleVote(currentMatch.p2, currentMatch.p1)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-right"><div className="absolute top-0 right-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">SEED #{currentMatch.p2.seed}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p2.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col md:items-end"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p2.scout || "The underdog story."}"</p></div></div>
+                    </div>
+                    <div className="text-center bg-blue-900 text-blue-100 p-3 rounded-lg max-w-lg mx-auto shadow-inner"><span className="font-bold text-blue-300 uppercase text-xs mr-2">Analyst Take:</span><span className="italic">"{analystQuote}"</span></div>
+                    <div className="mt-8 text-center"><button onClick={onReset} className="text-sm text-gray-400 hover:text-gray-600 underline">Cancel Tournament</button></div>
+                </div>
+            );
+        };
+
+        const ResultViewer = ({ result, onPlayOriginal, onHome }) => {
+            const [copied, setCopied] = React.useState(false);
+            const championAnalysis = React.useMemo(() => result.entrants ? getChampionAnalysis(result.champion, result.entrants.length) : { title: "The Winner", text: "A great victory!" }, [result]);
+
+            const copyShareLink = () => {
+                const url = `${SHARE_BASE_URL}?result_id=${result.id}`;
+                const textArea = document.createElement("textarea");
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (err) {}
+                document.body.removeChild(textArea);
+            };
+
+            return (
+                <div className="max-w-6xl mx-auto p-4 animate-fade-in flex flex-col min-h-[90vh] justify-center">
+                    <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-200">
+                        <div className="bg-gradient-to-r from-blue-900 to-blue-800 p-8 text-center text-white relative overflow-hidden">
+                            <Sparkles className="absolute top-4 left-4 text-yellow-400 opacity-20" size={60} /><Sparkles className="absolute bottom-4 right-4 text-yellow-400 opacity-20" size={40} />
+                            <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4">Bracket Result</div>
+                            <h1 className="text-4xl md:text-5xl font-sport tracking-wider mb-2">{result.bracketTitle}</h1>
+                            <p className="opacity-80 text-sm">Official Tournament Report</p>
+                        </div>
+                        <div className="bg-gray-50 border-b border-gray-200 p-6 flex flex-col md:flex-row gap-6 items-center">
+                            <div className="shrink-0"><div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center border-4 border-white shadow-lg mx-auto transform -rotate-6"><Crown size={48} className="text-yellow-600" /></div></div>
+                            <div className="text-center md:text-left flex-1"><h2 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2 bg-blue-100 inline-block px-2 py-1 rounded">Analyst Breakdown</h2><h3 className="text-3xl font-bold text-gray-900 mb-2">{championAnalysis.title}</h3><p className="text-gray-600 italic text-lg leading-relaxed border-l-4 border-blue-500 pl-4">"{championAnalysis.text}"</p></div>
+                            <div className="hidden md:block text-right"><div className="text-6xl font-sport text-gray-200">{result.champion.seed}</div></div>
+                        </div>
+                        <div className="bg-white p-8 overflow-hidden overflow-x-auto"><h4 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-8 text-center border-b border-gray-100 pb-4">Tournament Tree</h4>{result.entrants && result.matchHistory ? (<FullTreeViewer entrants={result.entrants} matchHistory={result.matchHistory} />) : (<div className="text-center text-gray-400 py-8 italic">Full bracket view not available for older results.</div>)}</div>
+                    </div>
+                    <div className="mt-8 grid md:grid-cols-2 gap-6 items-start">
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100"><h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Share2 size={20} className="text-blue-600"/> Share Your Result</h3><div className="flex gap-2 mb-4"><input readOnly value={`${SHARE_BASE_URL}?result_id=${result.id}`} className="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 truncate focus:outline-none"/><button onClick={copyShareLink} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2">{copied ? 'Copied!' : <><Copy size={16} /> Copy</>}</button></div></div>
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 flex flex-col justify-center gap-4 h-full"><button onClick={() => onPlayOriginal(result.bracketId)} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2"><Play size={20} fill="currentColor" /> Play This Bracket</button><button onClick={onHome} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-3 rounded-lg font-bold transition-colors">Create New Tournament</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Home = ({ onCreate, onLoad }) => {
+            const [loadId, setLoadId] = React.useState('');
+            const [popularBrackets, setPopularBrackets] = React.useState([]);
+
+            React.useEffect(() => {
+                fetch(POPULAR_JSON_URL)
+                    .then(res => res.json())
+                    .then(data => setPopularBrackets(data))
+                    .catch(err => {
+                        console.warn("Could not load popular brackets, using fallback.", err);
+                        setPopularBrackets([
+                            { id: "DEMO_DISNEY", title: "Best Disney Song", entrants: 8 },
+                            { id: "DEMO_SANDWICH", title: "Ultimate Sandwich", entrants: 8 },
+                            { id: "DEMO_90S", title: "Best 90s Cartoon", entrants: 8 }
+                        ]);
+                    });
+            }, []);
+
+            return (
+                <div className="max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-[70vh]">
+                    <div className="text-center mb-12"><div className="flex justify-center mb-4"><Crown size={64} className="text-orange-500" /></div><h1 className="text-6xl font-sport text-blue-900 mb-4 tracking-tight">BRACKETOLOGY</h1><p className="text-xl text-gray-600 max-w-lg mx-auto">The ultimate app for settling life's most important debates.</p></div>
+                    <div className="grid md:grid-cols-2 gap-8 w-full max-w-2xl mb-12">
+                        <div onClick={onCreate} className="bg-white p-8 rounded-2xl shadow-lg border-2 border-transparent hover:border-orange-400 cursor-pointer transition-all hover:-translate-y-1 group text-center"><div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-orange-200 transition-colors"><Plus size={32} className="text-orange-600" /></div><h2 className="text-2xl font-bold text-gray-800 mb-2">Create New</h2><p className="text-gray-500">Build a custom bracket (4-64 teams).</p></div>
+                        <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-400 transition-all text-center"><div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"><Play size={32} className="text-blue-600" /></div><h2 className="text-2xl font-bold text-gray-800 mb-4">Enter Arena</h2><div className="flex gap-2"><input type="text" placeholder="Enter ID" value={loadId} onChange={(e) => setLoadId(e.target.value)} className="flex-1 p-2 border border-gray-300 rounded focus:border-blue-500 focus:outline-none uppercase text-center font-bold tracking-widest"/><button onClick={() => { if(loadId.trim()) onLoad(loadId.trim()); }} className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-bold">GO</button></div></div>
+                    </div>
+                    {popularBrackets.length > 0 && (
+                        <div className="w-full max-w-2xl">
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Flame size={16} className="text-orange-500" /> Trending Arenas</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {popularBrackets.map((bracket, i) => (
+                                    <div key={i} onClick={() => onLoad(bracket.id)} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 cursor-pointer transition-all flex justify-between items-center group">
+                                        <div><div className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{bracket.title}</div><div className="text-xs text-gray-400">{bracket.entrants} Contenders</div></div>
+                                        <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-500" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [user, setUser] = React.useState(null);
+            const [view, setView] = React.useState('home'); 
+            const [currentBracket, setCurrentBracket] = React.useState(null);
+            const [currentResult, setCurrentResult] = React.useState(null);
+            const [loading, setLoading] = React.useState(true);
+            const urlChecked = React.useRef(false);
+
+            const handleExit = () => { setView('home'); try { if (window.history.pushState) window.history.pushState({path:window.location.href.split('?')[0]},'',window.location.href.split('?')[0]); } catch (e) {} };
+
+            const loadBracket = async (id, userOverride = null) => {
+                // CHECK DEMO DATA FIRST
+                if (DEMO_BRACKETS[id.toUpperCase()]) {
+                    setCurrentBracket(DEMO_BRACKETS[id.toUpperCase()]);
+                    setView('play');
+                    setLoading(false);
+                    return;
+                }
+
+                const effectiveUser = userOverride || user;
+                if (!effectiveUser) return;
+                setLoading(true);
+                try {
+                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(BRACKETS_COLLECTION).doc(id.toUpperCase()).get();
+                    if (doc.exists) { setCurrentBracket(doc.data()); setView('play'); } else { alert("Bracket not found!"); handleExit(); }
+                } catch (error) { console.error(error); alert("Error loading."); handleExit(); } finally { setLoading(false); }
+            };
+
+            const loadResult = async (id, userOverride = null) => {
+                const effectiveUser = userOverride || user;
+                if (!effectiveUser) return;
+                setLoading(true);
+                try {
+                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(RESULTS_COLLECTION).doc(id).get();
+                    if (doc.exists) { setCurrentResult(doc.data()); setView('view_result'); } else { alert("Result not found!"); handleExit(); }
+                } catch (error) { console.error(error); alert("Error loading result."); handleExit(); } finally { setLoading(false); }
+            };
+
+            const handleSaveResult = async (resultData) => {
+                if (!user) return;
+                try {
+                    const shortId = Math.random().toString(36).substring(2, 9); 
+                    const fullResult = { ...resultData, creatorId: user.uid, id: shortId, timestamp: Date.now() };
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(RESULTS_COLLECTION).doc(shortId).set(fullResult);
+                    setCurrentResult(fullResult); setView('view_result'); 
+                } catch (error) { console.error(error); alert("Could not save result."); }
+            };
+
+            React.useEffect(() => {
+                const init = async () => {
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) { try { await auth.signInWithCustomToken(token); } catch(e) { await auth.signInAnonymously(); } } else { await auth.signInAnonymously(); }
+                };
+                const unsubscribe = auth.onAuthStateChanged((u) => {
+                    setUser(u);
+                    if (u && !urlChecked.current) {
+                        urlChecked.current = true;
+                        const p = new URLSearchParams(window.location.search);
+                        if (p.get('result_id')) loadResult(p.get('result_id'), u);
+                        else if (p.get('id')) loadBracket(p.get('id'), u);
+                        else setLoading(false);
+                    } else if (!u) {} else { setLoading(false); }
+                });
+                init();
+                return () => unsubscribe();
+            }, []);
+
+            const saveBracket = async (bracketData) => {
+                if (!user) return;
+                try {
+                    const shortId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(BRACKETS_COLLECTION).doc(shortId).set({ ...bracketData, creatorId: user.uid, id: shortId });
+                    setCurrentBracket({ ...bracketData, id: shortId }); setView('share_bracket');
+                } catch (error) { console.error(error); alert("Could not save."); }
+            };
+
+            if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-400">Loading Arena...</div>;
+
+            return (
+                <div className="min-h-screen bg-gray-100">
+                    <nav className="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50">
+                        <div className="max-w-5xl mx-auto flex justify-between items-center">
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={handleExit}><Crown size={24} className="text-orange-500" /><span className="font-sport text-xl tracking-wide">BRACKETOLOGY</span></div>
+                            {view !== 'home' && <button onClick={handleExit} className="text-sm font-semibold hover:text-orange-400 transition-colors">Exit</button>}
+                        </div>
+                    </nav>
+                    <main>
+                        {view === 'home' && (<Home onCreate={() => setView('create')} onLoad={loadBracket} />)}
+                        {view === 'create' && (<CreateScreen onSave={saveBracket} onCancel={handleExit} />)}
+                        {view === 'share_bracket' && currentBracket && (
+                            <div className="max-w-2xl mx-auto p-8 pt-20 text-center animate-fade-in">
+                                <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                                    <div className="inline-flex items-center justify-center p-4 bg-green-100 rounded-full mb-6"><Sparkles size={40} className="text-green-600" /></div>
+                                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Bracket Ready!</h2>
+                                    <p className="text-gray-600 mb-8">Your tournament has been minted.</p>
+                                    <div className="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300 mb-8">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Share Link</p>
+                                        <div className="flex items-center justify-center gap-4"><span className="text-lg md:text-xl font-mono font-bold text-gray-800 tracking-wider truncate max-w-[200px] md:max-w-xs opacity-40 select-all">{SHARE_BASE_URL}?id={currentBracket.id}</span><button onClick={() => {const url = `${SHARE_BASE_URL}?id=${currentBracket.id}`; const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert("Copied!");}} className="p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors flex items-center gap-2 font-bold text-sm whitespace-nowrap"><Copy size={18} /> Copy Link</button></div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-4 justify-center"><button onClick={handleExit} className="px-6 py-3 rounded-lg font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Back Home</button><button onClick={() => setView('play')} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transform active:scale-95 transition-all">Play Now</button></div>
+                                </div>
+                            </div>
+                        )}
+                        {view === 'play' && currentBracket && (<GameScreen bracket={currentBracket} onReset={handleExit} onGameFinished={handleSaveResult} />)}
+                        {view === 'view_result' && currentResult && (<ResultViewer result={currentResult} onHome={handleExit} onPlayOriginal={(id) => loadBracket(id)} />)}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
