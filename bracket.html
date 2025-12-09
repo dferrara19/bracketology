@@ -713,7 +713,23 @@
             React.useEffect(() => {
                 const init = async () => {
                     const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                    if (token) { try { await auth.signInWithCustomToken(token); } catch(e) { await auth.signInAnonymously(); } } else { await auth.signInAnonymously(); }
+                    if (token) { 
+                        try { await auth.signInWithCustomToken(token); } 
+                        catch(e) { await auth.signInAnonymously(); } 
+                    } else { 
+                        try {
+                            await auth.signInAnonymously();
+                        } catch (error) {
+                            console.error("Auth Error:", error);
+                            if (error.code === 'auth/invalid-api-key') {
+                                alert("Firebase API Key is invalid. Check your Google Cloud Console API restrictions.");
+                            } else if (error.code === 'auth/operation-not-allowed') {
+                                alert("Anonymous authentication is not enabled in the Firebase Console.");
+                            } else {
+                                alert("Authentication failed: " + error.message);
+                            }
+                        }
+                    }
                 };
                 const unsubscribe = auth.onAuthStateChanged((u) => {
                     setUser(u);
