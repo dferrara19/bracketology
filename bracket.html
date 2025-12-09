@@ -24,12 +24,13 @@
     <!-- Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <!-- Firebase -->
+    <!-- Firebase (Compat libraries for CDN usage) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics-compat.js"></script>
 
-    <!-- App Icon (SVG Data URI for single-file portability) -->
+    <!-- App Icon (SVG Data URI) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a' rx='20'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
@@ -107,11 +108,34 @@
 
     <script type="text/babel">
         // --- Firebase Configuration & Initialization ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        
+        // Configuration for GitHub Pages Deployment
+        const manualConfig = {
+            apiKey: "AIzaSyBQiHfLayAdzyeLfF7eQw90S6aKZmyl0X8",
+            authDomain: "bracketology-753d0.firebaseapp.com",
+            projectId: "bracketology-753d0",
+            storageBucket: "bracketology-753d0.firebasestorage.app",
+            messagingSenderId: "623229553544",
+            appId: "1:623229553544:web:3e577b02cefdfa01f1083d",
+            measurementId: "G-8TWVDEXZH4"
+        };
+
+        // Use environment config if available (Preview), otherwise use manualConfig (GitHub Pages)
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) 
+            ? JSON.parse(__firebase_config) 
+            : manualConfig;
+            
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+            try {
+                firebase.initializeApp(firebaseConfig);
+                if (firebase.analytics) {
+                    firebase.analytics(); // Initialize analytics if available
+                }
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+            }
         }
         const auth = firebase.auth();
         const db = firebase.firestore();
