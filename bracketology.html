@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bracketology - Custom Tournament Maker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bracketology</title>
+    
+    <!-- PWA Settings -->
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="application-name" content="Bracketology">
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -18,13 +24,17 @@
     <!-- Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <!-- html2canvas -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+    <!-- App Icon (SVG Data URI for single-file portability) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a' rx='20'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+    <!-- Web App Manifest (Data URI) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Bracketology","short_name":"Bracketology","start_url":".","display":"standalone","background_color":"#f3f4f6","theme_color":"#1e3a8a","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%231e3a8a%27 rx=%2720%27/%3E%3Cpath d=%27M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z%27 stroke=%27white%27 stroke-width=%276%27 fill=%27none%27/%3E%3Cpath d=%27M35 25 L42 38 L50 20 L58 38 L65 25%27 stroke=%27%23fbbf24%27 stroke-width=%274%27 fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap');
@@ -32,6 +42,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .font-sport {
@@ -107,6 +118,15 @@
 
         // --- Inline Icons ---
         const Icons = {
+            Logo: (props) => (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className={props.className} width={props.size || 40} height={props.size || 40}>
+                    <rect width="100" height="100" fill="#1e3a8a" rx="20" className="text-blue-900 fill-current"/>
+                    {/* Bracket Lines */}
+                    <path d="M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z" stroke="white" strokeWidth="6" fill="none"/>
+                    {/* Crown */}
+                    <path d="M35 25 L42 38 L50 20 L58 38 L65 25" stroke="#fbbf24" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            ),
             Trophy: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>),
             Swords: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg>),
             Plus: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>),
@@ -121,7 +141,7 @@
             Flame: (props) => (<svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>)
         };
 
-        const { Trophy, Swords, Plus, Play, ChevronRight, Sparkles, Copy, Crown, Share2, Zap, AlertCircle, Flame } = Icons;
+        const { Logo, Trophy, Swords, Plus, Play, ChevronRight, Sparkles, Copy, Crown, Share2, Zap, AlertCircle, Flame } = Icons;
 
         // --- Constants ---
         const BRACKETS_COLLECTION = 'brackets';
@@ -201,27 +221,7 @@
             "Both sides refusing to back down.",
             "An absolute chess match unfolding.",
             "Expect the unexpected in this one.",
-            "The stats say one thing, the heart says another.",
-            "Defense wins championships, but offense sells tickets.",
-            "They are leaving it all on the floor tonight.",
-            "A true test of character for both sides.",
-            "You can cut the tension with a knife.",
-            "This is what we call a barn burner!",
-            "Neither side wants to go home early.",
-            "The coach must be losing their mind right now.",
-            "Efficiency is the name of the game.",
-            "It's a game of runs.",
-            "Momentum is a fickle mistress.",
-            "They need a spark, and fast.",
-            "This is a statement game.",
-            "Survive and advance.",
-            "The madness is just beginning.",
-            "Who has the clutch gene?",
-            "Stats don't measure heart.",
-            "An instant classic in the making.",
-            "The bracket buster potential is high.",
-            "This matchup is a nightmare for the selection committee.",
-            "A battle of wills."
+            "The stats say one thing, the heart says another."
         ];
 
         const getAnalystQuote = (p1, p2, isFinal) => {
@@ -233,10 +233,7 @@
                     "The confetti canon is primed. Who wants it more?",
                     "There is no tomorrow. Leave it all on the field.",
                     "Two titans. One trophy. Let's dance.",
-                    "The final chapter of an incredible story.",
-                    "Immortality awaits the winner.",
-                    "One shining moment!",
-                    "The whole season comes down to this."
+                    "The final chapter of an incredible story."
                 ]);
             }
 
@@ -249,10 +246,7 @@
                     "Two absolute powerhouses colliding early.",
                     "The committee got this seeding right. Massive matchup.",
                     "Strength vs Strength. Something has to give.",
-                    "Star power everywhere you look.",
-                    "Two juggernauts colliding.",
-                    "This feels like a heavyweight title fight.",
-                    "Star power overload."
+                    "Star power everywhere you look."
                 ]);
             }
 
@@ -263,10 +257,7 @@
                     "Everyone loves a Cinderella story. Is this the start of one?",
                     `The #${Math.min(p1.seed, p2.seed)} seed is heavily favored, but they can't sleep on this.`,
                     "Upset alert? The experts are whispering.",
-                    "On paper this is a blowout, but they play the games for a reason.",
-                    "Can the underdog pull off the miracle?",
-                    "Nobody gave them a chance, but here we are.",
-                    "David is loading his sling."
+                    "On paper this is a blowout, but they play the games for a reason."
                 ]);
             }
 
@@ -276,9 +267,7 @@
                     "Too close to call. This goes down to the wire.",
                     "Las Vegas won't touch this line. Dead even.",
                     "It's going to come down to the final possession.",
-                    "Razor thin margins in this matchup.",
-                    "Pick 'em.",
-                    "This will come down to the last possession."
+                    "Razor thin margins in this matchup."
                 ]);
             }
 
@@ -290,33 +279,10 @@
             const isTopSeed = seed === 1;
             const isHighSeed = seed <= 4;
             const isLowSeed = seed > bracketSize / 2;
-            
-            const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-            if (isTopSeed) {
-                return getRandom([
-                    { title: "The Undisputed King", text: `As predicted by the experts, the #1 seed ${champion.name} completes a dominant run. This wasn't just a win; it was a coronation. A dynasty in the making.` },
-                    { title: "Business as Usual", text: `They came, they saw, they conquered. The #1 seed ${champion.name} took everyone's best shot and still ended up on top. Perfection.` },
-                    { title: "Heavy lies the Crown", text: `The pressure was immense, but ${champion.name} didn't crack. A wire-to-wire performance that reminds us why they were the favorite.` }
-                ]);
-            }
-            if (isHighSeed) {
-                return getRandom([
-                    { title: "Cream of the Crop", text: `Elite talent prevails. ${champion.name} entered as a favorite and played like one, dismantling the opposition with systematic precision.` },
-                    { title: "Championship Pedigree", text: `Class showed today. ${champion.name} navigated a tough field with the poise of a true champion. They deserve this moment.` }
-                ]);
-            }
-            if (isLowSeed) {
-                return getRandom([
-                    { title: "The Ultimate Cinderella Story", text: `Do you believe in miracles?! The #${seed} seed ${champion.name} has shocked the world! Brackets everywhere are busted. This is why we play the games!` },
-                    { title: "Bracket Busted", text: `Nobody saw this coming. The #${seed} seed just went on a legendary run that will be talked about for decades. ${champion.name} is your champion!` },
-                    { title: "Against All Odds", text: `From the bubble to the trophy. ${champion.name} defied every statistic and expert prediction to claim the title.` }
-                ]);
-            }
-            return getRandom([
-                { title: "Bracket Buster", text: `Nobody saw this coming except maybe ${champion.name} themselves. A gritty, hard-fought path through the toughest bracket in years.` },
-                { title: "The Hard Road", text: `Nothing came easy for ${champion.name}, but they battled through every round to earn this victory. A blue-collar championship.` }
-            ]);
+            if (isTopSeed) return { title: "The Undisputed King", text: `As predicted by the experts, the #1 seed ${champion.name} completes a dominant run. This wasn't just a win; it was a coronation. A dynasty in the making.` };
+            if (isHighSeed) return { title: "Cream of the Crop", text: `Elite talent prevails. ${champion.name} entered as a favorite and played like one, dismantling the opposition with systematic precision.` };
+            if (isLowSeed) return { title: "The Ultimate Cinderella Story", text: `Do you believe in miracles?! The #${seed} seed ${champion.name} has shocked the world! Brackets everywhere are busted. This is why we play the games!` };
+            return { title: "Bracket Buster", text: `Nobody saw this coming except maybe ${champion.name} themselves. A gritty, hard-fought path through the toughest bracket in years.` };
         };
 
         const getBracketOrder = (numEntrants) => {
@@ -754,7 +720,10 @@
                 <div className="min-h-screen bg-gray-100">
                     <nav className="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-50">
                         <div className="max-w-5xl mx-auto flex justify-between items-center">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={handleExit}><Crown size={24} className="text-orange-500" /><span className="font-sport text-xl tracking-wide">BRACKETOLOGY</span></div>
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={handleExit}>
+                                <Logo size={32} className="text-orange-500" />
+                                <span className="font-sport text-xl tracking-wide ml-2">BRACKETOLOGY</span>
+                            </div>
                             {view !== 'home' && <button onClick={handleExit} className="text-sm font-semibold hover:text-orange-400 transition-colors">Exit</button>}
                         </div>
                     </nav>
