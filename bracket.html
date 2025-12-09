@@ -7,6 +7,7 @@
     
     <!-- PWA Settings -->
     <meta name="theme-color" content="#1e3a8a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="application-name" content="Bracketology">
@@ -34,8 +35,9 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a' rx='20'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
-    <!-- Web App Manifest (Data URI) -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Bracketology","short_name":"Bracketology","start_url":".","display":"standalone","background_color":"#f3f4f6","theme_color":"#1e3a8a","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%231e3a8a%27 rx=%2720%27/%3E%3Cpath d=%27M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z%27 stroke=%27white%27 stroke-width=%276%27 fill=%27none%27/%3E%3Cpath d=%27M35 25 L42 38 L50 20 L58 38 L65 25%27 stroke=%27%23fbbf24%27 stroke-width=%274%27 fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+    <!-- Web App Manifest (Encoded Data URI) -->
+    <!-- Note: We use encodeURIComponent for the JSON content to avoid syntax errors with special chars -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Bracketology%22%2C%22short_name%22%3A%22Bracketology%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f3f4f6%22%2C%22theme_color%22%3A%22%231e3a8a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%253E%253Crect%20width%3D'100'%20height%3D'100'%20fill%3D'%25231e3a8a'%20rx%3D'20'%2F%253E%253Cpath%20d%3D'M30%2040%20L30%2070%20M70%2040%20L70%2070%20M30%2055%20L45%2055%20M55%2055%20L70%2055%20M50%2025%20L60%2035%20L50%2045%20L40%2035%20Z'%20stroke%3D'white'%20stroke-width%3D'6'%20fill%3D'none'%2F%253E%253Cpath%20d%3D'M35%2025%20L42%2038%20L50%2020%20L58%2038%20L65%2025'%20stroke%3D'%2523fbbf24'%20stroke-width%3D'4'%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800&display=swap');
@@ -626,7 +628,10 @@
 
             React.useEffect(() => {
                 fetch(POPULAR_JSON_URL)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error("File not found");
+                        return res.json();
+                    })
                     .then(data => setPopularBrackets(data))
                     .catch(err => {
                         console.warn("Could not load popular brackets, using fallback.", err);
@@ -781,24 +786,4 @@
                                 <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
                                     <div className="inline-flex items-center justify-center p-4 bg-green-100 rounded-full mb-6"><Sparkles size={40} className="text-green-600" /></div>
                                     <h2 className="text-3xl font-bold text-gray-900 mb-2">Bracket Ready!</h2>
-                                    <p className="text-gray-600 mb-8">Your tournament has been minted.</p>
-                                    <div className="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300 mb-8">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Share Link</p>
-                                        <div className="flex items-center justify-center gap-4"><span className="text-lg md:text-xl font-mono font-bold text-gray-800 tracking-wider truncate max-w-[200px] md:max-w-xs opacity-40 select-all">{SHARE_BASE_URL}?id={currentBracket.id}</span><button onClick={() => {const url = `${SHARE_BASE_URL}?id=${currentBracket.id}`; const ta = document.createElement("textarea"); ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert("Copied!");}} className="p-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors flex items-center gap-2 font-bold text-sm whitespace-nowrap"><Copy size={18} /> Copy Link</button></div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-4 justify-center"><button onClick={handleExit} className="px-6 py-3 rounded-lg font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Back Home</button><button onClick={() => setView('play')} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg transform active:scale-95 transition-all">Play Now</button></div>
-                                </div>
-                            </div>
-                        )}
-                        {view === 'play' && currentBracket && (<GameScreen bracket={currentBracket} onReset={handleExit} onGameFinished={handleSaveResult} />)}
-                        {view === 'view_result' && currentResult && (<ResultViewer result={currentResult} onHome={handleExit} onPlayOriginal={(id) => loadBracket(id)} />)}
-                    </main>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                                    <p className="text-
