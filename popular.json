@@ -1,1 +1,20 @@
-
+[
+    {
+        "id": "DEMO_DISNEY",
+        "title": "Best Disney Song",
+        "entrants": 8,
+        "description": "From Lion King to Frozen, which anthem rules them all?"
+    },
+    {
+        "id": "DEMO_SANDWICH",
+        "title": "The Ultimate Sandwich",
+        "entrants": 8,
+        "description": "Hot vs Cold. Meat vs Veggie. The battle for lunch."
+    },
+    {
+        "id": "DEMO_90S",
+        "title": "Best 90s Cartoon",
+        "entrants": 8,
+        "description": "Saturday morning nostalgia trip."
+    }
+]
