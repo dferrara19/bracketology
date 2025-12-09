@@ -441,7 +441,20 @@
                 const incomplete = entrants.some(e => !e.name.trim());
                 if (incomplete) { alert("Please fill names."); return; }
                 setIsSaving(true);
-                try { await onSave({ title, entrants, timestamp: Date.now() }); } catch (error) { console.error("Error saving:", error); alert("Failed to save."); } finally { setIsSaving(false); }
+                
+                console.log("[DEBUG] Starting save process...");
+                console.log("[DEBUG] Validation passed.");
+                console.log("[DEBUG] Calling onSave...");
+                
+                try { 
+                    await onSave({ title, entrants, timestamp: Date.now() }); 
+                    console.log("[DEBUG] onSave completed.");
+                } catch (error) { 
+                    console.error("Error in handleSave:", error); 
+                    alert("Failed to save."); 
+                } finally { 
+                    setIsSaving(false); 
+                }
             };
 
             return (
@@ -759,10 +772,21 @@
             const saveBracket = async (bracketData) => {
                 if (!user) return;
                 try {
+                    console.log("[DEBUG] saveBracket called with data:", bracketData);
+                    console.log("[DEBUG] Current user status:", user);
                     const shortId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    console.log("[DEBUG] Generated ID:", shortId);
+                    
+                    console.log("[DEBUG] Writing to Firestore...");
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(BRACKETS_COLLECTION).doc(shortId).set({ ...bracketData, creatorId: user.uid, id: shortId });
-                    setCurrentBracket({ ...bracketData, id: shortId }); setView('share_bracket');
-                } catch (error) { console.error(error); alert("Could not save."); }
+                    
+                    console.log("[DEBUG] Firestore write successful.");
+                    setCurrentBracket({ ...bracketData, id: shortId }); 
+                    setView('share_bracket');
+                } catch (error) { 
+                    console.error("Error in saveBracket:", error); 
+                    alert("Could not save."); 
+                }
             };
 
             if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-400">Loading Arena...</div>;
