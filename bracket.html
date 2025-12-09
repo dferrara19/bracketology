@@ -723,9 +723,25 @@
                 try {
                     const shortId = Math.random().toString(36).substring(2, 9); 
                     const fullResult = { ...resultData, creatorId: user.uid, id: shortId, timestamp: Date.now() };
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(RESULTS_COLLECTION).doc(shortId).set(fullResult);
-                    setCurrentResult(fullResult); setView('view_result'); 
-                } catch (error) { console.error(error); alert("Could not save result."); }
+                    
+                    console.log("[DEBUG] Writing RESULT to Firestore...", fullResult);
+                    
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Result save timed out")), 10000));
+                    await Promise.race([
+                        db.collection('artifacts').doc(appId).collection('public').doc('data').collection(RESULTS_COLLECTION).doc(shortId).set(fullResult),
+                        timeout
+                    ]);
+                    
+                    console.log("[DEBUG] Result write successful.");
+                    setCurrentResult(fullResult); 
+                    setView('view_result'); 
+                } catch (error) { 
+                    console.error("Error in handleSaveResult:", error); 
+                    // Even if save fails, show the result locally
+                    setCurrentResult(resultData);
+                    setView('view_result');
+                    alert("Note: Could not save result to cloud (check network/permissions), but displaying locally.");
+                }
             };
 
             React.useEffect(() => {
@@ -739,19 +755,10 @@
                             await auth.signInAnonymously();
                         } catch (error) {
                             console.error("Auth Error:", error);
-                            // Fallback for "Public/Test Mode" or misconfigured console
-                            // We create a fake user so the UI works
                             const mockUid = localStorage.getItem('bracket_anon_id') || Math.random().toString(36).substring(2);
                             localStorage.setItem('bracket_anon_id', mockUid);
-                            setUser({ uid: mockUid, isAnonymous: true }); // Fake user object
-
-                            if (error.code === 'auth/invalid-api-key') {
-                                alert("Firebase API Key is invalid. Check your Google Cloud Console API restrictions.");
-                            } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
-                                alert("Anonymous authentication is disabled in your Firebase Console. Please enable it under Build > Authentication > Sign-in method.");
-                            } else {
-                                alert("Authentication failed: " + error.message);
-                            }
+                            setUser({ uid: mockUid, isAnonymous: true }); 
+                            // Don't alert immediately to avoid spam, just log
                         }
                     }
                 };
@@ -778,14 +785,32 @@
                     console.log("[DEBUG] Generated ID:", shortId);
                     
                     console.log("[DEBUG] Writing to Firestore...");
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(BRACKETS_COLLECTION).doc(shortId).set({ ...bracketData, creatorId: user.uid, id: shortId });
+                    
+                    // Create a timeout promise
+                    const timeout = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Request timed out. Check your network or Firestore rules.")), 10000)
+                    );
+                    
+                    // Race the write against the timeout
+                    await Promise.race([
+                        db.collection('artifacts').doc(appId).collection('public').doc('data').collection(BRACKETS_COLLECTION).doc(shortId).set({ ...bracketData, creatorId: user.uid, id: shortId }),
+                        timeout
+                    ]);
                     
                     console.log("[DEBUG] Firestore write successful.");
                     setCurrentBracket({ ...bracketData, id: shortId }); 
                     setView('share_bracket');
                 } catch (error) { 
                     console.error("Error in saveBracket:", error); 
-                    alert("Could not save."); 
+                    if (error.message.includes("timed out")) {
+                        alert("Connection timed out! \n\n1. Ensure you have created a 'Firestore Database' in your Firebase Console.\n2. Check your 'Security Rules' are set to test mode (allow read, write: if true;).");
+                    } else if (error.code === 'permission-denied') {
+                        alert("Permission Denied! \n\nPlease go to Firebase Console > Firestore Database > Rules and change them to: \n\nallow read, write: if true;");
+                    } else {
+                        alert("Save failed: " + error.message); 
+                    }
+                } finally { 
+                    // setIsSaving(false); // Not needed as we unmount or change view
                 }
             };
 
