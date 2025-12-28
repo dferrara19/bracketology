@@ -5,26 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bracketology</title>
     
+    <!-- PWA Settings -->
     <meta name="theme-color" content="#1e3a8a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="application-name" content="Bracketology">
     
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    <!-- Firebase (Compat libraries for CDN usage) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics-compat.js"></script>
 
+    <!-- App Icon (SVG Data URI) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a' rx='20'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231e3a8a'/%3E%3Cpath d='M30 40 L30 70 M70 40 L70 70 M30 55 L45 55 M55 55 L70 55 M50 25 L60 35 L50 45 L40 35 Z' stroke='white' stroke-width='6' fill='none'/%3E%3Cpath d='M35 25 L42 38 L50 20 L58 38 L65 25' stroke='%23fbbf24' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
+    <!-- Web App Manifest (Encoded Data URI) -->
     <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Bracketology%22%2C%22short_name%22%3A%22Bracketology%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f3f4f6%22%2C%22theme_color%22%3A%22%231e3a8a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%253E%253Crect%20width%3D'100'%20height%3D'100'%20fill%3D'%25231e3a8a'%20rx%3D'20'%2F%253E%253Cpath%20d%3D'M30%2040%20L30%2070%20M70%2040%20L70%2070%20M30%2055%20L45%2055%20M55%2055%20L70%2055%20M50%2025%20L60%2035%20L50%2045%20L40%2035%20Z'%20stroke%3D'white'%20stroke-width%3D'6'%20fill%3D'none'%2F%253E%253Cpath%20d%3D'M35%2025%20L42%2038%20L50%2020%20L58%2038%20L65%2025'%20stroke%3D'%2523fbbf24'%20stroke-width%3D'4'%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
     <style>
@@ -108,7 +119,14 @@
             return { title: "Bracket Buster", text: `Nobody saw this coming except maybe ${champion.name} themselves. A gritty, hard-fought path.` };
         };
         
-        // --- SEEDING LOGIC: MARCH MADNESS STYLE ---
+        // Helper
+        const generateEntrants = (size) => {
+             return Array(size).fill().map((_, i) => {
+                 const info = getRegionInfo(i, size);
+                 return { id: i, name: '', scout: '', seed: info.seed, regionLabel: info.label, region: info.region };
+             });
+        };
+
         const getBracketOrder = (numEntrants) => {
             let rounds = Math.log2(numEntrants);
             let order = [1];
@@ -183,15 +201,6 @@
             );
         };
         
-        // --- LOGGER for Debugging ---
-        const logBracketModel = (entrants, history) => {
-            console.log("--- BRACKET MODEL DUMP ---");
-            console.log("Match History:", history);
-            const rawTree = buildBracketTree(getVisualEntrants(entrants), history);
-            console.log("Visual Tree Root:", rawTree);
-            console.log("--------------------------");
-        };
-
         const buildBracketTree = (entrants, history) => {
             let currentNodes = entrants.map(e => ({ player: e, children: [] }));
             const roundsCount = Math.log2(entrants.length);
@@ -201,23 +210,27 @@
                 for (let i = 0; i < currentNodes.length; i += 2) {
                     const child1 = currentNodes[i];
                     const child2 = currentNodes[i+1];
+                    
                     const winnerMatch = history.find(m => 
                         (m.winner.id == child1.player.id && m.loser.id == child2.player.id) || 
                         (m.winner.id == child2.player.id && m.loser.id == child1.player.id)
                     );
+                    
                     const winnerPlayer = winnerMatch ? winnerMatch.winner : { name: 'TBD', seed: '', id: 'tbd' };
-                    nextLevelNodes.push({ player: winnerPlayer, children: [child1, child2] });
+                    
+                    nextLevelNodes.push({
+                        player: winnerPlayer,
+                        children: [child1, child2]
+                    });
                 }
                 currentNodes = nextLevelNodes;
             }
             return currentNodes[0];
         };
-
+        
         const FullTreeViewer = ({ entrants, matchHistory, preSorted = false }) => {
             const rootNode = React.useMemo(() => {
                 if(!entrants || entrants.length === 0) return null;
-                // If preSorted is true, we assume the data coming in is ALREADY visually ordered
-                // If false (default), we reorder it to visual bracket order (1, 16, 8, 9...)
                 const inputData = preSorted ? entrants : getVisualEntrants(entrants);
                 return buildBracketTree(inputData, matchHistory);
             }, [entrants, matchHistory, preSorted]);
@@ -252,22 +265,26 @@
                     </div>
                     <div className="overflow-auto w-full relative border border-blue-200 rounded bg-white" style={{ minHeight: '300px' }}>
                         <div className="min-w-max p-4">
-                             {/* IMPORTANT: We are passing an ALREADY sliced (and thus 'sorted' block) from visualEntrants. 
-                                 We must tell FullTreeViewer NOT to sort again, or it will double-scramble. */}
                              <FullTreeViewer entrants={currentEntrants} matchHistory={matchHistory} preSorted={true} />
                         </div>
                     </div>
-                    {isLarge && (<div className="flex gap-2 mt-4">{[0,1,2,3].map(i => (<button key={i} onClick={() => setPage(i)} className={`w-3 h-3 rounded-full transition-colors ${i === page ? 'bg-blue-600 scale-110' : 'bg-gray-300 hover:bg-gray-400'}`} aria-label={`Go to region ${i + 1}`}/>))}</div>)}
+                    {isLarge && (
+                        <div className="flex gap-2 mt-4">
+                            {[0,1,2,3].map(i => (
+                                <button 
+                                    key={i} 
+                                    onClick={() => setPage(i)}
+                                    className={`w-3 h-3 rounded-full transition-colors ${i === page ? 'bg-blue-600 scale-110' : 'bg-gray-300 hover:bg-gray-400'}`} 
+                                    aria-label={`Go to region ${i + 1}`}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         };
 
         const RoundSummary = ({ roundName, upsets, onNext, entrants, matchHistory }) => {
-            // Log model state when summary loads
-            React.useEffect(() => {
-                logBracketModel(entrants, matchHistory);
-            }, [matchHistory]);
-
             return (
                 <div className="max-w-6xl mx-auto p-6 animate-fade-in flex flex-col items-center justify-center min-h-[50vh]">
                     <div className="bg-white rounded-xl shadow-xl p-8 border-t-8 border-blue-600 w-full text-center">
@@ -300,13 +317,6 @@
             const titleInputRef = React.useRef(null);
             const [titleError, setTitleError] = React.useState(false);
 
-            const generateEntrants = (size) => {
-                return Array(size).fill().map((_, i) => {
-                    const info = getRegionInfo(i, size);
-                    return { id: i, name: '', scout: '', seed: info.seed, regionLabel: info.label, region: info.region };
-                });
-            };
-
             React.useEffect(() => {
                 setEntrants(generateEntrants(bracketSize));
             }, [bracketSize]);
@@ -323,7 +333,7 @@
 
             const handleProcessCSV = () => {
                 if (!csvText.trim()) { setShowCSVModal(false); return; }
-                const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0 && l.replace(/,/g, '').trim().length > 0);
+                const lines = csvText.split('\n').filter(line => line.trim() !== '');
                 const count = lines.length;
                 let targetSize = 16;
                 if (count <= 4) targetSize = 4; else if (count <= 8) targetSize = 8; else if (count <= 16) targetSize = 16; else if (count <= 32) targetSize = 32; else targetSize = 64;
@@ -347,7 +357,6 @@
                                      name = line; 
                                      scout = ""; 
                                  }
-                                 
                                  const targetIdx = (r * regionSize) + (s - 1);
                                  if (newEntrants[targetIdx]) {
                                      newEntrants[targetIdx].name = name;
@@ -399,17 +408,7 @@
 
             const renderEntrantInputs = () => {
                 if (bracketSize < 16) return (<div className="grid md:grid-cols-2 gap-4 pb-4">{entrants.map((entrant, idx) => (<div key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 flex overflow-hidden group hover:border-blue-400 transition-colors"><div className="bg-blue-100 w-16 flex flex-col items-center justify-center shrink-0 border-r border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors"><span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Seed</span><span className="text-xl font-sport">{entrant.seed}</span></div><div className="p-3 grow space-y-2"><input type="text" placeholder="Team Name" value={entrant.name} onChange={(e) => handleEntrantChange(idx, 'name', e.target.value)} className="w-full p-1 bg-transparent border-b border-gray-200 focus:border-blue-500 focus:outline-none font-bold text-gray-800"/><input type="text" placeholder="Fun fact / Scout" value={entrant.scout} onChange={(e) => handleEntrantChange(idx, 'scout', e.target.value)} className="w-full p-1 bg-transparent border-b border-dotted border-gray-200 focus:border-blue-500 focus:outline-none text-xs text-gray-500 italic"/></div></div>))}</div>);
-                
-                const regionSize = bracketSize / 4;
-                const groups = [];
-                for(let r=0; r<4; r++) {
-                    const regionName = ["East", "West", "South", "Midwest"][r];
-                    const regionEntrants = entrants.slice(r*regionSize, (r+1)*regionSize);
-                    groups.push(
-                        <div key={r} className="mb-6"><h4 className="text-blue-800 font-bold uppercase tracking-widest border-b-2 border-blue-100 mb-3 pb-1">{regionName} Region</h4><div className="grid md:grid-cols-2 gap-4">{regionEntrants.map((entrant, idx) => (<div key={entrant.id} className="bg-white rounded-lg shadow-sm border border-gray-200 flex overflow-hidden group hover:border-blue-400 transition-colors"><div className="bg-blue-100 w-16 flex flex-col items-center justify-center shrink-0 border-r border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors"><span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Seed</span><span className="text-xl font-sport">{entrant.seed}</span></div><div className="p-3 grow space-y-2"><input type="text" placeholder="Team Name" value={entrant.name} onChange={(e) => handleEntrantChange(entrant.id, 'name', e.target.value)} className="w-full p-1 bg-transparent border-b border-gray-200 focus:border-blue-500 focus:outline-none font-bold text-gray-800"/><input type="text" placeholder="Fun fact / Scout" value={entrant.scout} onChange={(e) => handleEntrantChange(entrant.id, 'scout', e.target.value)} className="w-full p-1 bg-transparent border-b border-dotted border-gray-200 focus:border-blue-500 focus:outline-none text-xs text-gray-500 italic"/></div></div>))}</div></div>
-                    );
-                }
-                return <div>{groups}</div>;
+                const regionSize = bracketSize / 4; const groups = []; for(let r=0; r<4; r++) { const regionName = ["East", "West", "South", "Midwest"][r]; const regionEntrants = entrants.slice(r*regionSize, (r+1)*regionSize); groups.push(<div key={r} className="mb-6"><h4 className="text-blue-800 font-bold uppercase tracking-widest border-b-2 border-blue-100 mb-3 pb-1">{regionName} Region</h4><div className="grid md:grid-cols-2 gap-4">{regionEntrants.map((entrant, idx) => (<div key={entrant.id} className="bg-white rounded-lg shadow-sm border border-gray-200 flex overflow-hidden group hover:border-blue-400 transition-colors"><div className="bg-blue-100 w-16 flex flex-col items-center justify-center shrink-0 border-r border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors"><span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Seed</span><span className="text-xl font-sport">{entrant.seed}</span></div><div className="p-3 grow space-y-2"><input type="text" placeholder="Team Name" value={entrant.name} onChange={(e) => handleEntrantChange(entrant.id, 'name', e.target.value)} className="w-full p-1 bg-transparent border-b border-gray-200 focus:border-blue-500 focus:outline-none font-bold text-gray-800"/><input type="text" placeholder="Fun fact / Scout" value={entrant.scout} onChange={(e) => handleEntrantChange(entrant.id, 'scout', e.target.value)} className="w-full p-1 bg-transparent border-b border-dotted border-gray-200 focus:border-blue-500 focus:outline-none text-xs text-gray-500 italic"/></div></div>))}</div></div>); } return <div>{groups}</div>;
             };
 
             return (
@@ -432,20 +431,7 @@
                             </div>
                         </div>
                     )}
-
-                    <div className="bg-white rounded-xl shadow-xl overflow-hidden flex flex-col h-[90vh] md:h-auto">
-                        <div className="bg-blue-600 p-6 text-white shrink-0"><h2 className="text-3xl font-sport uppercase">Commissioner's Office</h2><p className="opacity-90 mt-2">Configure your Tournament</p></div>
-                        <div className="p-6 overflow-y-auto grow">
-                            <div className="grid md:grid-cols-2 gap-6 mb-8">
-                                <div><div className="flex justify-between items-center mb-2"><label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Tournament Title</label><div className="flex gap-2"><button onClick={() => setShowCSVModal(true)} className="text-xs flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors" title="Paste CSV Data"><Upload size={10} /> Paste CSV</button><button onClick={handleDebugFill} className="text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-500 px-2 py-1 rounded transition-colors" title="Auto-fill for testing"><Zap size={10} /> Debug Fill</button></div></div><input ref={titleInputRef} type="text" value={title} onChange={(e) => {setTitle(e.target.value); if(e.target.value.trim()) setTitleError(false);}} placeholder="e.g., Best Disney Villain" className={`w-full p-3 border-2 rounded-lg focus:outline-none text-lg font-bold ${titleError ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200 focus:border-blue-500'}`}/>{titleError && <p className="text-red-500 text-xs mt-1 font-bold">Please enter a title to start!</p>}</div>
-                                <div><label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bracket Size</label><div className="flex gap-2">{[4, 8, 16, 32, 64].map(size => (<button key={size} onClick={() => handleSizeChange(size)} className={`flex-1 py-3 rounded-lg font-bold border-2 transition-colors ${bracketSize === size ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}>{size}</button>))}</div></div>
-                            </div>
-                            <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide flex items-center gap-2 sticky top-0 bg-white py-2 z-10 border-b border-gray-100"><Swords size={16} /> The Contenders ({bracketSize})</h3>
-                            {renderEntrantInputs()}
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0"><button onClick={onCancel} className="px-6 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button><button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition-all flex items-center gap-2">{isSaving ? 'Minting...' : <>Start The Madness <ChevronRight size={20}/></>}</button></div>
-                    </div>
-                </div>
+                    <div className="bg-white rounded-xl shadow-xl overflow-hidden flex flex-col h-[90vh] md:h-auto"><div className="bg-blue-600 p-6 text-white shrink-0"><h2 className="text-3xl font-sport uppercase">Commissioner's Office</h2><p className="opacity-90 mt-2">Configure your Tournament</p></div><div className="p-6 overflow-y-auto grow"><div className="grid md:grid-cols-2 gap-6 mb-8"><div><div className="flex justify-between items-center mb-2"><label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Tournament Title</label><div className="flex gap-2"><button onClick={() => setShowCSVModal(true)} className="text-xs flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded transition-colors" title="Paste CSV Data"><Upload size={10} /> Paste CSV</button><button onClick={handleDebugFill} className="text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-500 px-2 py-1 rounded transition-colors" title="Auto-fill for testing"><Zap size={10} /> Debug Fill</button></div></div><input ref={titleInputRef} type="text" value={title} onChange={(e) => {setTitle(e.target.value); if(e.target.value.trim()) setTitleError(false);}} placeholder="e.g., Best Disney Villain" className={`w-full p-3 border-2 rounded-lg focus:outline-none text-lg font-bold ${titleError ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200 focus:border-blue-500'}`}/>{titleError && <p className="text-red-500 text-xs mt-1 font-bold">Please enter a title to start!</p>}</div><div><label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Bracket Size</label><div className="flex gap-2">{[4, 8, 16, 32, 64].map(size => (<button key={size} onClick={() => handleSizeChange(size)} className={`flex-1 py-3 rounded-lg font-bold border-2 transition-colors ${bracketSize === size ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}>{size}</button>))}</div></div></div><h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wide flex items-center gap-2 sticky top-0 bg-white py-2 z-10 border-b border-gray-100"><Swords size={16} /> The Contenders ({bracketSize})</h3>{renderEntrantInputs()}</div><div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0"><button onClick={onCancel} className="px-6 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button><button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition-all flex items-center gap-2">{isSaving ? 'Minting...' : <>Start The Madness <ChevronRight size={20}/></>}</button></div></div></div>
             );
         };
 
@@ -559,33 +545,19 @@
             if (champion) return <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 animate-fade-in"><div className="text-2xl font-bold text-gray-500 animate-pulse">Crowning Champion...</div></div>;
             if (showingSummary) return <RoundSummary roundName={finishedRoundName} upsets={roundUpsets} onNext={proceedToNextRound} entrants={bracket.entrants} matchHistory={matchHistory} />;
             if (currentRoundMatchups.length === 0) return <div className="p-12 text-center text-gray-500">Preparing the arena...</div>;
-
             const currentMatch = currentRoundMatchups[currentMatchIndex];
             const p1Label = `#${currentMatch.p1.seed} Seed`;
             const p2Label = `#${currentMatch.p2.seed} Seed`;
-
             return (
                 <div className="max-w-4xl mx-auto p-4 animate-fade-in flex flex-col h-full">
                     <div className="text-center mb-8"><div className="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">{roundName} • Match {currentMatchIndex + 1} of {currentRoundMatchups.length}</div><h2 className="text-3xl font-sport text-gray-900">{bracket.title}</h2></div>
-                    <div className="flex flex-col md:flex-row gap-4 items-stretch justify-center relative mb-8">
-                        <div onClick={() => handleVote(currentMatch.p1, currentMatch.p2)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-left"><div className="absolute top-0 left-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">{p1Label}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p1.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p1.scout || "An absolute powerhouse."}"</p></div></div>
-                        <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex items-center justify-center w-16 h-16 bg-orange-500 text-white font-sport text-2xl rounded-full border-4 border-white shadow-lg">VS</div>
-                        <div className="md:hidden flex items-center justify-center py-2 text-orange-500 font-black text-xl">VS</div>
-                        <div onClick={() => handleVote(currentMatch.p2, currentMatch.p1)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-right"><div className="absolute top-0 right-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">{p2Label}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p2.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col md:items-end"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p2.scout || "The underdog story."}"</p></div></div>
-                    </div>
+                    <div className="flex flex-col md:flex-row gap-4 items-stretch justify-center relative mb-8"><div onClick={() => handleVote(currentMatch.p1, currentMatch.p2)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-left"><div className="absolute top-0 left-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">{p1Label}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p1.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p1.scout || "An absolute powerhouse."}"</p></div></div><div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 hidden md:flex items-center justify-center w-16 h-16 bg-orange-500 text-white font-sport text-2xl rounded-full border-4 border-white shadow-lg">VS</div><div className="md:hidden flex items-center justify-center py-2 text-orange-500 font-black text-xl">VS</div><div onClick={() => handleVote(currentMatch.p2, currentMatch.p1)} className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 cursor-pointer rounded-xl p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden text-center md:text-right"><div className="absolute top-0 right-0 w-2 h-full bg-blue-500 group-hover:bg-blue-600 transition-colors"></div><div className="text-sm font-bold text-gray-400 mb-2">{p2Label}</div><h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-blue-600">{currentMatch.p2.name}</h3><div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col md:items-end"><p className="text-xs uppercase font-bold text-gray-400 mb-1">Scouting Report</p><p className="text-gray-600 italic text-sm">"{currentMatch.p2.scout || "The underdog story."}"</p></div></div></div>
                     <div className="text-center bg-blue-900 text-blue-100 p-3 rounded-lg max-w-lg mx-auto shadow-inner"><span className="font-bold text-blue-300 uppercase text-xs mr-2">Analyst Take:</span><span className="italic">"{analystQuote}"</span></div>
-                    <div className="mt-8 text-center flex justify-center gap-4">
-                        <button onClick={onReset} className="text-sm text-gray-400 hover:text-gray-600 underline">Cancel Tournament</button>
-                        {historyStack.length > 0 && (
-                            <button onClick={handleUndo} className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold">
-                                <RotateCcw size={14}/> Undo Last Vote
-                            </button>
-                        )}
-                    </div>
+                    <div className="mt-8 text-center flex justify-center gap-4"><button onClick={onReset} className="text-sm text-gray-400 hover:text-gray-600 underline">Cancel Tournament</button>{historyStack.length > 0 && (<button onClick={handleUndo} className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"><RotateCcw size={14}/> Undo Last Vote</button>)}</div>
                 </div>
             );
         };
-        
+
         const Leaderboard = ({ bracketId, currentChampionId }) => {
             const [leaders, setLeaders] = React.useState([]);
             const [loading, setLoading] = React.useState(true);
